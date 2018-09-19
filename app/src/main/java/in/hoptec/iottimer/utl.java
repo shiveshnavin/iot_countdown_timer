@@ -1023,12 +1023,13 @@ public class utl {
 
     public static EditText input  ;
 
-   public static void inputDialogBottom(Context ctx,String hint,final int TYPE,final InputDialogCallback callback)
+   public static void inputDialogBottom(Context ctx,String title,String hint,final int TYPE,final InputDialogCallback callback)
     {
          final BottomSheetDialog mBottomSheetDialog;;
 
 
         mBottomSheetDialog = new BottomSheetDialog(ctx);
+        mBottomSheetDialog.setTitle(title);
         LayoutInflater inf=(LayoutInflater)ctx.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
         View sheetView = inf.inflate(R.layout.diag_input_bottom, null);
 

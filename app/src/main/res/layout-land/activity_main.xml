@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/activity_main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/colorBackground">
+
+
+    <TextView
+
+        android:layout_alignParentLeft="true"
+        android:layout_centerVertical="true"
+        android:layout_centerInParent="true"
+        android:layout_marginLeft="60dp"
+        android:fontFamily="@font/font_text"
+        android:id="@+id/wifi"
+        android:gravity="center"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Wifi Disconnected"
+        android:textColor="@color/grey_100"
+        android:textSize="17sp" />
+
+    <RelativeLayout
+        android:layout_marginLeft="10dp"
+        android:layout_marginRight="60dp"
+        android:layout_alignParentRight="true"
+        android:layout_centerInParent="true"
+        android:id="@+id/container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content">
+
+
+
+
+
+        <ProgressBar
+            android:id="@+id/progressBarCircle"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="270dp"
+            android:layout_height="270dp"
+            android:layout_centerInParent="true"
+            android:background="@drawable/drawable_circle_dark_blue"
+            android:indeterminate="false"
+            android:max="100"
+            android:progress="100"
+            android:progressDrawable="@drawable/drawable_circle_yellow"
+            android:rotation="-90" />
+
+        <TextView
+            android:id="@+id/textViewTime"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:text="00:01:00"
+            android:textColor="@color/colorYellow"
+            android:textSize="45sp" />
+
+
+
+    </RelativeLayout>
+
+
+    <EditText
+        android:fontFamily="@font/font_style"
+        android:id="@+id/editTextMinute"
+        android:layout_width="wrap_content"
+
+        android:layout_height="wrap_content"
+        android:layout_toLeftOf="@+id/container"
+        android:layout_marginLeft="10dp"
+        android:layout_above="@+id/imageViewStartStop"
+        android:layout_marginBottom="10dp"
+        android:gravity="right"
+        android:hint="@string/hint_minute"
+        android:inputType="numberDecimal"
+        android:maxLength="15"
+        android:maxLines="1"
+        android:minEms="5"
+        android:text="1"
+        android:textColor="@color/colorYellow"
+        android:textColorHint="@color/colorYellow" />
+
+
+    <ImageView
+        android:id="@+id/imageViewStartStop"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+
+        android:layout_centerVertical="true"
+        android:layout_toLeftOf="@+id/container"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="20dp"
+        android:src="@drawable/icon_start" />
+
+
+
+    <ImageView
+        android:id="@+id/imageViewReset"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:layout_below="@id/imageViewStartStop"
+        android:layout_centerInParent="true"
+        android:layout_marginTop="30dp"
+        android:layout_toLeftOf="@+id/container"
+        android:layout_marginLeft="10dp"
+        android:src="@drawable/icon_reset" />
+
+</RelativeLayout>
