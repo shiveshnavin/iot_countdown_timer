@@ -1,10 +1,14 @@
 package in.hoptec.iottimer;
 
 import android.app.Activity;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.os.CountDownTimer;
+import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
 import android.text.format.Formatter;
 import android.view.Menu;
@@ -17,25 +21,17 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.androidnetworking.AndroidNetworking;
+import com.androidnetworking.error.ANError;
+import com.androidnetworking.interfaces.JSONObjectRequestListener;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.BufferedReader;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.net.URLConnection;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.TimeUnit;
 
-import fi.iki.elonen.NanoHTTPD;
 import in.hoptec.iottimer.utils.GenricCallback;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
@@ -45,6 +41,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private Activity act;
     ArrayList<Long> laps=new ArrayList<>();
 
+    public static String END_POINT  ="/reset";
 
     private long timeCountInMilliSeconds = 1 * 60000;
 
@@ -100,10 +97,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
             utl.e("Got IP : "+ip);
             wifiConnected("Wifi Connected");
+
             initWebServer(ip);
             makeRequest(ip);
-        }
 
+        }
 
     }
 
@@ -114,64 +112,57 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     };
 
-    public static class HttpCon extends Thread
-    {
-        String url;
-        String ip;
-        public HttpCon(String url,String ip)
-        {
-            this.url=url;
-            this.ip=ip;
-        }
-        public void run()
+
+        public void runHttp(String ip)
         {
             try {
-                url="http://"+url;
-                URL ur=new URL(url);
-                utl.e("HttpCon","Call : "+url);
-                HttpURLConnection con =  (HttpURLConnection)ur.openConnection();
-                con.setRequestMethod("POST");
-                con.setRequestProperty("Content-Type","application/json");
-                con.setRequestProperty("Accept","application/json");
+               String  url="http://"+url_reg;
+               utl.e(url);
 
-                HttpURLConnection.setFollowRedirects(true);
-                con.setInstanceFollowRedirects(false);
-                con.setDoOutput(true);
-
-
-                OutputStream ops= con.getOutputStream();
-                InputStream ips=con.getInputStream();
 
                 JSONObject jsonObject=new JSONObject();
-                jsonObject.put("ip",ip);
+                jsonObject.put("ip","http://"+ip+":"+WebServer.PORT+END_POINT);
 
-                ops.write(jsonObject.toString().getBytes());
-                utl.e("HttpCon","Bodt : "+jsonObject.toString());
 
-                utl.e("HttpCon","Response Code : "+con.getResponseCode());
+                JSONObject jo = new JSONObject();
+                try {
 
-                BufferedReader b=new BufferedReader(new InputStreamReader(ips));
-                StringBuffer bf=new StringBuffer();
-                String singleRes;
-                while ((singleRes=b.readLine())!=null)
-                {
-                    bf.append(singleRes);
+                    jo.put("ip", ip);
+
+                } catch (JSONException e) {
+                    e.printStackTrace();
                 }
+                AndroidNetworking.initialize(ctx);
+                AndroidNetworking.post(url).addJSONObjectBody(jsonObject).build().getAsJSONObject(new JSONObjectRequestListener() {
+                    @Override
+                    public void onResponse(JSONObject response) {
 
-                utl.e("HttpCon","Response : "+bf.toString());
+
+                        utl.e(response);
+
+                    }
+
+                    @Override
+                    public void onError(ANError ANError) {
+
+                        utl.e(ANError.getErrorDetail());
+
+                    }
+                });
+
 
             } catch (Exception e) {
                 e.printStackTrace();
             }
 
         }
-    }
+
 
 
     private void makeRequest (String ip ){
-        HttpCon con=new HttpCon(url_reg,ip);
-        con.start();
 
+
+        runHttp(ip);
 
     };
 
@@ -227,17 +218,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     WebServer webServer;
     private void initWebServer (String IP ){
 
-        WebServer.RequestServer server= (uri, method, headers, parms, files) -> {
+        WebServer.RequestServer server= (session) -> {
 
-            String res="404 Not Found";
-            NanoHTTPD.Response.IStatus status=NanoHTTPD.Response.Status.NOT_FOUND;
-            String mime=NanoHTTPD.MIME_PLAINTEXT;
+            String res="404 Not Found at "+session.getUri();
 
 
-            if(uri.contains("click"))
+
+            if(session.getUri().contains(END_POINT))
             {
-                status=NanoHTTPD.Response.Status.OK;
-                JSONObject jsonObject=new JSONObject();
+                 JSONObject jsonObject=new JSONObject();
                 try {
                     jsonObject.put("status",true);
                     jsonObject.put("cur_time",System.currentTimeMillis());
@@ -246,27 +235,75 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     e.printStackTrace();
                 }
 
+
                 res=jsonObject.toString();
+                utl.e("Click Served");
+                res=res.toString();
+                dispatchBroadCast();
+
+
 
             }
 
-            return new NanoHTTPD.Response(status,mime,res);
+            utl.e("Serving Req : "+res);
+            return res;
         };
 
         webServer=WebServer.getInstance(server);
         try {
             webServer.start();
 
-            wifiConnected("Wifi Connected\n Server Started at http://"+IP+"/click");
+            wifiConnected("Wifi Connected\n Server Started at http://"+IP+":"+WebServer.PORT+END_POINT);
         } catch (Exception e) {
             e.printStackTrace();
         }
+        intiBroadCast();
 
     };
 
 
+    public void onBroadCast(String action)
+    {
+        if(countDownTimer!=null)
+
+        resetTimer();
+    }
+    BroadcastReceiver r=new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            onBroadCast(intent.getStringExtra("action"));
+            utl.e("Got broadcast : "+intent.getStringExtra("action"));
+        }
+    };
+    static String BROADCAST="iot.click";
+    public   void dispatchBroadCast ( ){
+
+        try {
+            LocalBroadcastManager manager=LocalBroadcastManager.getInstance(act.getApplicationContext());
+            Intent intent=new Intent();
+            intent.setAction(BROADCAST);
+            manager.sendBroadcast(intent);
+            utl.e("Dispatching broadcast : ");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    private void intiBroadCast ( ){
 
 
+        try{
+            LocalBroadcastManager  manager=LocalBroadcastManager.getInstance(act.getApplicationContext());
+
+            IntentFilter i=new IntentFilter(BROADCAST);
+            manager.registerReceiver(r,i);
+        }catch (Exception e)
+        {
+            e.printStackTrace();
+        };
+
+    };
 
 
 
@@ -300,7 +337,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void onClick(View view) {
         switch (view.getId()) {
             case R.id.imageViewReset:
-                reset();
+                resetTimer();
                 break;
             case R.id.imageViewStartStop:
                 startStop();
@@ -309,9 +346,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     /**
-     * method to reset count down timer
+     * method to resetTimer count down timer
      */
-    private void reset() {
+    public   void resetTimer() {
         flash();
         stopCountDownTimer();
         startCountDownTimer();
@@ -330,7 +367,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             setTimerValues();
             // call to initialize the progress bar values
             setProgressBarValues();
-            // showing the reset icon
+            // showing the resetTimer icon
             imageViewReset.setVisibility(View.VISIBLE);
             // changing play icon to stop icon
             imageViewStartStop.setImageResource(R.drawable.icon_stop);
@@ -343,7 +380,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         } else {
 
-            // hiding the reset icon
+            // hiding the resetTimer icon
             imageViewReset.setVisibility(View.GONE);
             // changing stop icon to start icon
             imageViewStartStop.setImageResource(R.drawable.icon_start);
@@ -396,7 +433,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 textViewTime.setText(hmsTimeFormatter(timeCountInMilliSeconds));
                 // call to initialize the progress bar values
                 setProgressBarValues();
-                // hiding the reset icon
+                // hiding the resetTimer icon
                 //imageViewReset.setVisibility(View.GONE);
                 // changing stop icon to start icon
                 imageViewStartStop.setImageResource(R.drawable.icon_start);
@@ -494,6 +531,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         stopCountDownTimer();
         if(webServer!=null)
             webServer.stop();
+
+        LocalBroadcastManager  manager=LocalBroadcastManager.getInstance(act.getApplicationContext());
+        try{
+            manager.unregisterReceiver(r);
+
+        }catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+
+
         listener.stopListen();
         super.onDestroy();
     }

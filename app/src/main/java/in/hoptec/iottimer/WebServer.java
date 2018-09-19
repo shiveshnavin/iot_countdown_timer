@@ -13,41 +13,36 @@ import fi.iki.elonen.NanoHTTPD;
 
 public class WebServer {
 
+    public static int PORT=12346;
     private static WebServer server;
     private RequestServer requestServer;
 
     public WebServer(RequestServer requestServer) {
         this.requestServer = requestServer;
+
     }
 
     public static interface RequestServer{
-        NanoHTTPD.Response onRequest(String uri, NanoHTTPD.Method method, Map<String, String> headers, Map<String, String> parms, Map<String, String> files);
+        String  onRequest(NanoHTTPD.IHTTPSession session);
     }
 
 
-    private NanoHTTPD httpd=new NanoHTTPD(80) {
+    public class App extends NanoHTTPD {
 
-        @Override
-        public void start() throws IOException {
-            utl.e("WebServer","Started !");
-            super.start();
-        }
-
-        @Override
-        public void stop() {
-            utl.e("WebServer","Stopped !");
-            super.stop();
-        }
-
-        @Override
-        public NanoHTTPD.Response serve(String uri, NanoHTTPD.Method method, Map<String, String> headers, Map<String, String> parms, Map<String, String> files) {
-
-            utl.e("WebServer","Serving "+uri);
-            return requestServer.onRequest(uri, method, headers, parms, files);
+        public App() throws IOException {
+            super(PORT);
+            start(NanoHTTPD.SOCKET_READ_TIMEOUT, false);
+            System.out.println("\nRunning! Point your browsers to http://ip:"+PORT+"/ \n");
         }
 
 
-    };
+        @Override
+        public Response serve(IHTTPSession session) {
+           return newFixedLengthResponse(requestServer.onRequest(session));
+        }
+    }
+
+    private App httpd;
     public static WebServer getInstance(RequestServer requestServer)
     {
         if(server==null)
@@ -58,12 +53,15 @@ public class WebServer {
 
     public void stop()
     {
-        httpd.stop();
+        if(httpd!=null)
+            httpd.stop();
+
+
     }
     public void start()
     {
         try {
-            httpd.start();
+            httpd=new App();
         } catch (IOException e) {
             e.printStackTrace();
         }
